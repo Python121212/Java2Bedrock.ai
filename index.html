@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bridge-Master 40 Mobile</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --accent: #58a6ff;
+            --error: #f85149;
+            --success: #3fb950;
+            --text: #c9d1d9;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ヘッダー */
+        header {
+            padding: 10px 20px;
+            background: var(--panel);
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.1rem; margin: 0; color: var(--accent); }
+
+        /* モバイル用タブ切り替え */
+        .tabs {
+            display: flex;
+            background: var(--panel);
+            border-bottom: 1px solid #30363d;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 14px;
+            cursor: pointer;
+            color: #8b949e;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(88, 166, 255, 0.05);
+        }
+
+        /* メインコンテンツ */
+        .content-area {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .view {
+            display: none;
+            height: 100%;
+            flex-direction: column;
+            padding: 15px;
+        }
+
+        .view.active { display: flex; }
+
+        /* ドロップ/ファイル選択エリア */
+        .upload-card {
+            background: var(--panel);
+            border: 2px dashed #30363d;
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        /* コンソール */
+        .console {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            overflow-y: auto;
+            border: 1px solid #30363d;
+        }
+
+        /* モジュールリスト (Grid表示) */
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        .module-card {
+            background: var(--panel);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #30363d;
+        }
+
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .dot-off { background: #484f58; }
+        .dot-on { background: var(--success); box-shadow: 0 0 5px var(--success); }
+
+        /* フッター操作ボタン */
+        footer {
+            padding: 15px;
+            background: var(--panel);
+            border-top: 1px solid #30363d;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-main { background: var(--accent); color: white; }
+        .btn-sub { background: #30363d; color: white; }
+
+        /* ログの装飾 */
+        .log { margin-bottom: 5px; border-left: 2px solid var(--accent); padding-left: 8px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>BridgeMaster 40</h1>
+    <div id="pdf-indicator" style="font-size: 10px; color: #8b949e;">📄 0/2 PDF</div>
+</header>
+
+<div class="tabs">
+    <div class="tab active" onclick="switchView('console')">CONSOLE</div>
+    <div class="tab" onclick="switchView('modules')">ENGINEERS</div>
+</div>
+
+<div class="content-area">
+    <div id="view-console" class="view active">
+        <div class="upload-card" onclick="document.getElementById('fileInput').click()">
+            <strong>Tap to Upload</strong><br>
+            <span style="font-size:12px; color:#8b949e;">JAR / Wiki PDFs</span>
+            <input type="file" id="fileInput" multiple style="display:none">
+        </div>
+        <div class="console" id="consoleOut">
+            <div class="log">SYSTEM: Booting engineers...</div>
+        </div>
+    </div>
+
+    <div id="view-modules" class="view">
+        <div class="module-grid" id="moduleGrid">
+            </div>
+    </div>
+</div>
+
+<footer>
+    <button class="btn btn-main" onclick="startProcess()">RUN ENGINE</button>
+    <button class="btn btn-sub" onclick="clearLog()">CLEAR</button>
+</footer>
+
+<script>
+    const modules = [
+        "Main_Controller", "PDF_Java_Parser", "PDF_Bedrock_Parser", "Knowledge_Bridge",
+        "Dictionary_Java", "Dictionary_Bedrock", "Search_Dispatcher", "Error_Judge",
+        "Pre_Error_Observer", "Logic_Validator", "Geometry_Matrix", "Bone_Hierarchy",
+        "UV_Mapper", "Texture_Processor", "Particle_Factory", "Sound_Event_Mixer",
+        "Audio_Metadata", "AI_Goal_Parser", "Animation_State_Machine", "MoLang_Translator",
+        "Variable_Tracker", "Recipe_Synthesizer", "UI_Architecture", "Pack_Generator",
+        "Custom_Logic", "UUID_Coord", "Translation_Synth", "Memory_Optimizer",
+        "Version_Bridge", "Shader_Logic", "NBT_Translator", "Sound_Attenuation",
+        "Network_Packet", "QA_Auto_Tester", "UI_State_Bridge", "Block_Network",
+        "World_Gen", "Physics_Calc", "Asset_De-Duplicator", "Final_Archive"
+    ];
+
+    // 初期化
+    const grid = document.getElementById('moduleGrid');
+    modules.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'module-card';
+        div.innerHTML = `<span>${m}</span><span><span class="dot dot-off" id="dot-${m}"></span></span>`;
+        grid.appendChild(div);
+    });
+
+    function switchView(viewName) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('view-' + viewName).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    function startProcess() {
+        const out = document.getElementById('consoleOut');
+        out.innerHTML += `<div class="log" style="color:var(--success)">>>> Core Engine Started.</div>`;
+        out.scrollTop = out.scrollHeight;
+    }
+
+    function clearLog() {
+        document.getElementById('consoleOut').innerHTML = '<div class="log">Console cleared.</div>';
+    }
+</script>
+
+</body>
+</html>
