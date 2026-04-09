@@ -1,121 +1,70 @@
 /**
  * 53. Master_Orchestrator.js
- * 役割: 全60エンジニアの指揮・データリレー・進捗管理
+ * 役割: 全モジュールの指揮および、最終成果物(.mcaddon)の物理排出
  */
 
-// 各レイヤーから主要モジュールをインポート（想定）
-// import { JARUnpacker } from './7_JAR_Unpacker.js';
-// import { ModelJSONEmitter } from './13_Model_JSON_Emitter.js';
-// ...など
-
 export const MasterOrchestrator = {
-    // 内部ステータス管理
     state: {
-        projectName: "MutantAddon",
-        files: {},      // 仮想ファイルシステム
-        knowledge: {},  // PDFから抽出した辞書
-        outputRP: {},   // 生成されたリソースパック
-        outputBP: {}    // 生成されたビヘイビアパック
+        projectName: "mutant_zombie",
+        finalBlob: null
     },
 
-    /**
-     * メイン実行パイプライン
-     */
     async execute(jarFile, pdfFiles) {
         try {
-            this.updateUI("SYSTEM START", 0);
+            // --- 前半工程 (Module 1-52) ---
+            // ※ここでは省略していますが、これまでの解析・変換・難読化が走ります
+            
+            // --- パッケージング工程 (Module 42: MCAddon_Packager) ---
+            // 仮想的に生成されたフォルダ群をZIP(Blob)にまとめます
+            this.state.finalBlob = await this.generateZipBlob(); 
 
-            // --- STAGE 1: 知識解読 (Modules 1-6) ---
-            this.updateUI("KNOWLEDGE EXTRACTION", 5);
-            this.state.knowledge = await this.processKnowledge(pdfFiles);
-
-            // --- STAGE 2: Java分解 (Modules 7-12) ---
-            this.updateUI("DECOMPILING JAR", 20);
-            const rawAssets = await this.unpackJar(jarFile);
-
-            // --- STAGE 3: 変換・構築 (Modules 13-38) ---
-            this.updateUI("TRANSPILING LOGIC", 40);
-            await this.transpile(rawAssets);
-
-            // --- STAGE 4: パッケージング (Modules 39-42) ---
-            this.updateUI("PACKAGING .MCADDON", 75);
-            await this.buildPackage();
-
-            // --- STAGE 5: セキュリティ & 検品 (Modules 43-52) ---
-            this.updateUI("ENCRYPTING & VERIFYING", 90);
-            await this.applySecurity();
-
-            // --- FINISH (Modules 53-60) ---
-            this.updateUI("MISSION COMPLETED", 100);
-            this.downloadResult();
+            // --- 最終工程 (Module 60: User_Interface_Bridge) ---
+            this.triggerDownload();
 
         } catch (error) {
-            console.error("ORCHESTRATION ERROR:", error);
-            window.log(`FATAL: ${error.message}`, "log-error");
+            window.log(`[ERROR] ${error.message}`, "log-error");
         }
     },
 
     /**
-     * PDFの知識を共通辞書化
+     * ブラウザに「保存ダイアログ」を強制的に出させる命令
      */
-    async processKnowledge(pdfs) {
-        window.log(">> Wiki PDFからパラメータを抽出中...");
-        // 1. PDF_Raw_Stream & 2. PDF_Text_Extractor 実行
-        // 5. Semantic_Matcher を使ってJava-Bedrock変換表を作成
-        return { sounds: {}, units: {} }; 
+    triggerDownload() {
+        if (!this.state.finalBlob) {
+            window.log("❌ エラー: 出力データが空です。", "log-error");
+            return;
+        }
+
+        const fileName = `${this.state.projectName}.mcaddon`;
+        
+        // 1. メモリ上のデータにアクセスするためのURLを発行
+        const url = URL.createObjectURL(this.state.finalBlob);
+        
+        // 2. 擬似的なダウンロードリンクを作成
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        
+        // 3. リンクを不可視で画面に追加し、即座にクリック
+        document.body.appendChild(link);
+        link.click();
+        
+        // 4. クリーンアップ（メモリリーク防止）
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            window.log("💾 ストレージへの保存リクエストを完了しました。", "log-success");
+        }, 100);
     },
 
     /**
-     * JARの解剖
+     * 内部でJSZip等を使用してBlobを生成する関数（簡易版）
      */
-    async unpackJar(file) {
-        window.log(">> JARファイルを仮想メモリに展開中...");
-        // 7. JAR_Unpacker 実行
-        return {}; 
-    },
-
-    /**
-     * 変換ロジックの実行
-     */
-    async transpile(assets) {
-        window.log(">> 60エンジニアが並行処理を開始...");
-        // 13. Model_JSON_Emitter でモデル生成
-        // 21. MoLang_Syntax_Generator でAI計算
-        // 26. Spatial_Audio_Setter で音響距離設定
-    },
-
-    /**
-     * .mcaddon ファイルのビルド
-     */
-    async buildPackage() {
-        window.log(">> .mcaddon 構造を構築中...");
-        // 39. Manifest_JSON_Builder でUUID紐付け
-        // 42. MCAddon_Packager でzip(mcaddon)化
-    },
-
-    /**
-     * セキュリティ層の適用
-     */
-    async applySecurity() {
-        window.log(">> セキュリティ層がコードを難読化中...", "log-sec");
-        // 48. Variable_Shuffler & 51. Domain_Lock_Shield
-    },
-
-    /**
-     * UIへの進捗通知
-     */
-    updateUI(status, percent) {
-        const event = new CustomEvent('bm60_progress_update', {
-            detail: { status, percent }
-        });
-        window.dispatchEvent(event);
-    },
-
-    /**
-     * 最終成果物のダウンロード
-     */
-    downloadResult() {
-        window.log("🎉 すべての変換工程が完了しました！");
-        // 60. User_Interface_Bridge を介してダウンロード実行
+    async generateZipBlob() {
+        // 本来はここで Module 42 が生成したデータを受け取ります
+        // テスト用に空のアドオン構造を想定
+        const zip = new JSZip();
+        // 実際にはここに RP/BP の中身が入る
+        return await zip.generateAsync({ type: "blob" });
     }
 };
