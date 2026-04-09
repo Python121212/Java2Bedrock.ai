@@ -1,7 +1,7 @@
 {
   "short_name": "BM-60",
   "name": "BridgeMaster 60: Ultimate Transpiler",
-  "description": "Java Edition MOD to Bedrock Addon Transpiler with 60 specialized modules.",
+  "description": "60の専門モジュールによるJava版MODから統合版アドオンへの究極変換エンジン",
   "icons": [
     {
       "src": "icons/icon-192.png",
