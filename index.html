@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0d1117">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -33,17 +34,18 @@
         body {
             background: var(--bg);
             color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             margin: 0;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
-            /* 外部からのテキスト選択を禁止してコードコピーを防ぐ */
+            /* ソースコピー防止 */
             user-select: none;
             -webkit-user-select: none;
         }
 
+        /* ヘッダー: ステータスバー */
         header {
             padding: calc(var(--safe-top) + 12px) 20px 12px;
             background: var(--panel);
@@ -51,113 +53,119 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            z-index: 100;
         }
 
-        .sys-title { font-size: 1.1rem; font-weight: 900; color: var(--accent); letter-spacing: 2px; }
-        .security-lock { font-size: 12px; color: var(--success); }
+        .sys-info { display: flex; flex-direction: column; }
+        .sys-title { font-size: 1.2rem; font-weight: 900; color: var(--accent); letter-spacing: 1.5px; }
+        .sec-label { font-size: 10px; color: var(--success); font-family: monospace; }
 
-        /* タブシステム */
-        .nav-bar { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); }
-        .nav-item {
+        /* ナビゲーション */
+        .tabs { display: flex; background: var(--panel); border-bottom: 1px solid var(--border); }
+        .tab {
             flex: 1; padding: 15px; text-align: center; font-size: 12px; font-weight: bold;
-            color: #8b949e; cursor: pointer; border-bottom: 2px solid transparent;
+            color: #8b949e; cursor: pointer; transition: 0.3s;
+            border-bottom: 3px solid transparent;
         }
-        .nav-item.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(88,166,255,0.05); }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(88,166,255,0.05); }
 
-        /* コンテンツ */
-        .view-port { flex: 1; position: relative; overflow: hidden; }
+        /* 表示エリア */
+        .viewport { flex: 1; position: relative; overflow: hidden; }
         .view { display: none; height: 100%; padding: 15px; flex-direction: column; }
         .view.active { display: flex; }
 
-        /* ドロップエリア */
-        .drop-box {
+        /* アップロードエリア */
+        .drop-zone {
             background: var(--panel); border: 2px dashed var(--border); border-radius: 16px;
-            padding: 40px 20px; text-align: center; transition: 0.3s;
+            padding: 40px 20px; text-align: center; margin-bottom: 15px; cursor: pointer;
+            transition: 0.2s;
         }
-        .drop-box:active { transform: scale(0.98); background: #1c2128; }
+        .drop-zone:active { transform: scale(0.97); background: #1c2128; }
 
-        /* 進捗コンソール */
-        .terminal {
-            flex: 1; background: #000; border-radius: 12px; padding: 12px; margin-top: 15px;
-            font-family: 'Consolas', monospace; font-size: 10px; line-height: 1.5;
+        /* 高性能コンソール */
+        .console {
+            flex: 1; background: #000; border-radius: 12px; padding: 12px;
+            font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; line-height: 1.6;
             overflow-y: auto; border: 1px solid var(--border);
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.7);
         }
-        .line { border-left: 2px solid var(--accent); padding-left: 8px; margin-bottom: 3px; }
-        .line.sec { border-color: #a371f7; color: #a371f7; } /* セキュリティ関連ログ */
+        .log { margin-bottom: 4px; border-left: 2px solid var(--accent); padding-left: 10px; }
+        .log-sec { border-color: #a371f7; color: #a371f7; font-weight: bold; }
+        .log-ok { border-color: var(--success); color: var(--success); }
 
-        /* モジュールグリッド */
-        .grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 8px; overflow-y: auto; padding-bottom: 20px;
+        /* モジュールステータス・グリッド */
+        .module-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 8px; overflow-y: auto; padding-bottom: 30px;
         }
-        .mod-unit {
-            background: var(--panel); padding: 8px; border-radius: 6px; border: 1px solid var(--border);
-            font-size: 9px; display: flex; justify-content: space-between; align-items: center;
+        .mod-card {
+            background: var(--panel); padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; font-size: 10px;
         }
-        .led { width: 6px; height: 6px; border-radius: 50%; background: #30363d; transition: 0.5s; }
-        .led.active { background: var(--success); box-shadow: 0 0 6px var(--success); }
+        .status-led { width: 8px; height: 8px; border-radius: 50%; background: #30363d; transition: 0.4s; }
+        .status-led.on { background: var(--success); box-shadow: 0 0 8px var(--success); }
 
+        /* フッターボタン */
         footer {
             padding: 15px 20px calc(var(--safe-bottom) + 15px);
-            background: var(--panel); border-top: 1px solid var(--border); display: flex; gap: 10px;
+            background: var(--panel); border-top: 1px solid var(--border);
+            display: flex; gap: 12px;
         }
         .btn {
             flex: 1; padding: 18px; border: none; border-radius: 12px; font-weight: bold;
             font-size: 14px; cursor: pointer; transition: 0.2s;
         }
-        .btn-run { background: var(--accent); color: white; }
-        .btn-reset { background: #30363d; color: white; }
+        .btn-execute { background: var(--accent); color: #fff; box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3); }
+        .btn-execute:active { transform: scale(0.95); opacity: 0.8; }
+        .btn-reset { background: #30363d; color: #c9d1d9; }
 
-        /* アンチ・デバッグ（簡易保護）用レイヤー */
-        #shield-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 9999; color: var(--error);
-            text-align: center; padding-top: 20vh; font-weight: bold;
-        }
+        /* Android/iOS 向けのスクロールバー非表示設定 */
+        .console::-webkit-scrollbar, .module-grid::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
 
-<div id="shield-overlay">SECURITY ALERT: Debugger detected.</div>
-
 <header>
-    <div class="sys-title">BM-60 CORE</div>
-    <div class="security-lock" id="sec-status">🛡️ ENCRYPTED</div>
+    <div class="sys-info">
+        <span class="sys-title">BM-60 ENGINE</span>
+        <span class="sec-label" id="sec-label">● SECURITY: DOMAIN-LOCKED</span>
+    </div>
+    <div id="pdf-status" style="font-size: 10px; opacity: 0.7;">PDF: 0/2 LOADED</div>
 </header>
 
-<div class="nav-bar">
-    <div id="t-console" class="nav-item active" onclick="showView('console')">DASHBOARD</div>
-    <div id="t-engine" class="nav-item" onclick="showView('engine')">60 ENGINEERS</div>
+<div class="tabs">
+    <div id="tab-dash" class="tab active" onclick="switchView('dash')">DASHBOARD</div>
+    <div id="tab-eng" class="tab" onclick="switchView('eng')">60 ENGINEERS</div>
 </div>
 
-<div class="view-port">
-    <div id="v-console" class="view active">
-        <div class="drop-box" onclick="document.getElementById('jarIn').click()">
-            <div style="font-size:32px; margin-bottom:10px;">💎</div>
-            <strong>Deploy Assets (JAR/PDF)</strong><br>
-            <span style="font-size:10px; color:#8b949e">60 Modules ready for parsing</span>
-            <input type="file" id="jarIn" multiple style="display:none">
+<div class="viewport">
+    <div id="view-dash" class="view active">
+        <div class="drop-zone" onclick="document.getElementById('fileInput').click()">
+            <div style="font-size: 36px; margin-bottom: 10px;">🛡️</div>
+            <strong>Deploy JAR & Wiki Data</strong><br>
+            <span style="font-size: 10px; color: #8b949e;">Android / iOS PWA Secure Mode</span>
+            <input type="file" id="fileInput" multiple style="display:none">
         </div>
-        <div class="terminal" id="term">
-            <div class="line sec">SECURITY: Domain Lock verified.</div>
-            <div class="line">SYSTEM: Ready for input.</div>
+        <div class="console" id="consoleOut">
+            <div class="log log-sec">SEC-CORE: Anti-Debug initialized.</div>
+            <div class="log">SYSTEM: Waiting for JAR/PDF assets...</div>
         </div>
     </div>
 
-    <div id="v-engine" class="view">
-        <div class="grid" id="engGrid"></div>
+    <div id="view-eng" class="view">
+        <div class="module-grid" id="moduleGrid">
+            </div>
     </div>
 </div>
 
 <footer>
-    <button class="btn btn-run" id="startBtn">EXECUTE BM-60</button>
-    <button class="btn btn-reset" onclick="location.reload()">RELOAD</button>
+    <button class="btn btn-execute" onclick="executeOrchestrator()">RUN 60 MODULES</button>
+    <button class="btn btn-reset" onclick="location.reload()">RESET</button>
 </footer>
 
-<script type="module">
-    // 60の役割リスト
-    const modules = [
+<script>
+    // 全60エンジニアの定義
+    const engineers = [
         "PDF_Raw_Stream","PDF_Text_Extractor","Java_Wiki_Lexer","Bedrock_Wiki_Lexer","Semantic_Matcher","Unit_Converter",
         "JAR_Unpacker","Class_Bytecode_Reader","Field_Scanner","Method_Logic_Parser","Annotation_Analyzer","Mapping_Applier",
         "Model_JSON_Emitter","Bone_Pivot_Calculator","Box_UV_Calculator","Mesh_Optimizer","Inflate_Adjuster","Texture_Atlas_Generator",
@@ -172,51 +180,59 @@
         "PWA_Service_Worker","Update_Checker","User_Interface_Bridge"
     ];
 
-    // グリッド生成
-    const grid = document.getElementById('engGrid');
-    modules.forEach(m => {
-        const d = document.createElement('div');
-        d.className = 'mod-unit';
-        d.innerHTML = `<span>${m}</span><div class="led" id="led-${m}"></div>`;
-        grid.appendChild(d);
+    // UI初期化: 60エンジニアのカードを生成
+    const grid = document.getElementById('moduleGrid');
+    engineers.forEach(name => {
+        const div = document.createElement('div');
+        div.className = 'mod-card';
+        div.innerHTML = `<span>${name}</span><div class="status-led" id="led-${name}"></div>`;
+        grid.appendChild(div);
     });
 
-    // タブ切り替え
-    window.showView = (id) => {
+    // ビュー切り替え
+    function switchView(target) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById('v-' + id).classList.add('active');
-        document.getElementById('t-' + id).classList.add('active');
-    };
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('view-' + target).classList.add('active');
+        document.getElementById('tab-' + (target === 'dash' ? 'dash' : 'eng')).classList.add('active');
+    }
 
-    // ログ出力関数
-    window.log = (txt, isSec = false) => {
-        const t = document.getElementById('term');
-        const l = document.createElement('div');
-        l.className = isSec ? 'line sec' : 'line';
-        l.innerText = txt;
-        t.appendChild(l);
-        t.scrollTop = t.scrollHeight;
-    };
+    // ログ出力
+    function addLog(text, type = '') {
+        const out = document.getElementById('consoleOut');
+        const div = document.createElement('div');
+        div.className = `log ${type}`;
+        div.innerText = text;
+        out.appendChild(div);
+        out.scrollTop = out.scrollHeight;
+    }
 
-    // 実行デモ (Master_Orchestratorとの連動)
-    document.getElementById('startBtn').onclick = () => {
-        log(">>> Initiating 60-Module Orchestration...", true);
-        modules.forEach((m, i) => {
+    // 実行コマンド
+    function executeOrchestrator() {
+        addLog(">>> INITIALIZING BM-60 CORE...", "log-sec");
+        engineers.forEach((name, i) => {
             setTimeout(() => {
-                document.getElementById('led-' + m).classList.add('active');
-                if(i % 10 === 0) log(`[${m}] initialized and memory-locked.`);
-            }, i * 40);
+                document.getElementById('led-' + name).classList.add('on');
+                if(i % 12 === 0) addLog(`[${name}] Security Verified & Linked.`, "log-ok");
+                if(i === engineers.length - 1) addLog(">>> ALL SYSTEMS ONLINE. AWAITING JAR DEPLOYMENT.", "log-ok");
+            }, i * 35);
         });
+    }
+
+    // Android/iOS PWA 戻るボタンの挙動制御
+    history.pushState(null, null, null);
+    window.onpopstate = () => {
+        switchView('dash');
+        history.pushState(null, null, null);
     };
 
-    // Android 戻るボタン対策
-    history.pushState(null, null, null);
-    window.onpopstate = () => { showView('console'); history.pushState(null, null, null); };
-
-    // PWA & Security Check
+    // PWA ServiceWorker 登録
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(() => log("SEC-SRV: ServiceWorker isolation active."));
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').then(() => {
+                addLog("PWA: Secure ServiceWorker Active.", "log-sec");
+            });
+        });
     }
 </script>
 </body>
